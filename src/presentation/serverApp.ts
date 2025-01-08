@@ -3,7 +3,7 @@ import path from 'path';
 
 interface Options {
     port: number;
-    public_path: string;
+    public_path?: string;
 }
 
 export class ServerApp {
