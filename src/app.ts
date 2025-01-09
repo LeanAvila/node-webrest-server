@@ -1,4 +1,5 @@
-import { envs } from "./presentation/config/envs.plugin";
+import { envs } from "./config/envs.plugin";
+import { AppRoutes } from "./presentation/routes";
 import { ServerApp } from "./presentation/serverApp";
 
 
@@ -12,6 +13,7 @@ function main() {
     new ServerApp({
         port: envs.PORT,
         public_path: envs.PUBLIC_PATH,
+        routes: AppRoutes.routes,
     })
     .start();
 
