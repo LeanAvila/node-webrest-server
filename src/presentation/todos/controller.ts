@@ -1,5 +1,6 @@
 import { Request, Response, Router } from "express";
 import { prisma } from "../../data/postgres/init";
+import { isDate } from "util/types";
 
 // const todos = [
 //     { id: 1, text: 'Buy milk', completedAt: new Date() , isDelete : false},
@@ -11,9 +12,9 @@ export class TodoController {
 
     constructor() { }
 
-    public get = (req: Request, res: Response) => {
+    public get = async (req: Request, res: Response) => {
 
-        const todos = prisma.todo.findMany({
+        const todos = await prisma.todo.findMany({
             where: {
                 isDeleted: false,
             }
@@ -22,7 +23,7 @@ export class TodoController {
         res.json( todos );
     }
 
-    public getTodoById = (req: Request, res: Response) => {
+    public getTodoById = async (req: Request, res: Response) => {
         const id = +req.params.id  //CON EL MÁS REALIZAMOS LA CONVERSIÓN IMPLÍCITAMENTE
 
         if (isNaN(id)) {
@@ -30,9 +31,10 @@ export class TodoController {
             return;
         }
 
-        const todo = prisma.todo.findFirst({
+        const todo = await prisma.todo.findFirst({
             where: {
                 id: id,
+                isDeleted: false,
             }
         });
         // const result = todos.find(todo => (todo.id === id && todo.isDelete === false));
@@ -43,7 +45,7 @@ export class TodoController {
 
     };
 
-    public createTodo = (req: Request, res: Response) => {
+    public createTodo = async (req: Request, res: Response) => {
         const { text } = req.body;
 
         if (!text) {
@@ -51,7 +53,7 @@ export class TodoController {
             return;
         }
 
-        const todo = prisma.todo.create({
+        const todo = await prisma.todo.create({
             data : {
                 text: text,
                 completedAt: null,
@@ -62,7 +64,7 @@ export class TodoController {
         res.json(todo);
     }
 
-    public updateTodo = (req: Request, res: Response) => {
+    public updateTodo = async (req: Request, res: Response) => {
         const id = +req.params.id  //SE ESPECIFÍCA EN EL URL
 
         if (isNaN(id)) {
@@ -70,46 +72,54 @@ export class TodoController {
             return;
         }
 
-        const { text, completedAt } = req.body; //SE RECIBE EN EL BODY LAS PROPIEDADES QUE SE ACTUALIZAN
-
-        // if ( !text ) {
-        //     res.status(400).json({ error : 'text propiety is required'});
-        //     return;
-        // }
-
-        const foundTodo = prisma.todo.update({
-            where : {
-                id : id,
-            },
-            data : {
-                text,
-                completedAt
+        const foundTodo = await prisma.todo.findFirst({
+            where: {
+                id,
+                isDeleted: false,
             }
         });
-        // const result = todos.find(todo => (todo.id === id && todo.isDelete === false));
 
         if (!foundTodo) {
             res.status(404).json({ error: `Todo with ID ${id} not found` });
             return;
         }
 
+        const { text, completedAt } = req.body; //SE RECIBE EN EL BODY LAS PROPIEDADES QUE SE ACTUALIZAN
+
         //! OJO, esto es por referencia (es otra variable pero hace referencia al mismo obj "todos")
         // result.text = text || result.text;
+        
+        
+        if( completedAt ){ 
 
-        // (completedAt === 'null')
-        //     ? result.completedAt = completedAt
-        //     : result.completedAt = new Date(completedAt || result.completedAt);
+            if ( completedAt === 'null'){
+                foundTodo.completedAt = null;
 
-        //LA MANERA APROPIADA DE HACERLO (sin referencias):
-        // const todoResult = todos.forEach( (todo, index) => {
-        //     if (todo.id === id){
-        //         todos[index] = todo
-        //     }
-        // })
-        res.json(foundTodo);
+            } else if ( isNaN(Date.parse(completedAt)) ){ //Date.parse devuelva NaN si no es fecha válida
+                res.status(400).json({ error: `completedAt argument must be a DateTime` });
+                return;
+
+            } else {
+                foundTodo.completedAt = new Date(completedAt);
+            }
+
+        }
+
+
+        const todoUpdated = await prisma.todo.update({
+            where : {
+                id,
+            },
+            data : {
+                ...foundTodo,
+                text: text || foundTodo.text, //SI NO HAY TEXTO, ENTONCES SE MANTIENE EL ORIGINAL DE LA DB
+            }
+        });
+
+        res.json(todoUpdated);
     }
 
-    public deleteTodo = (req: Request, res: Response) => {
+    public deleteTodo = async (req: Request, res: Response) => {
         const id = +req.params.id  //SE ESPECIFÍCA EN EL URL
 
         if (isNaN(id)) {
@@ -117,7 +127,19 @@ export class TodoController {
             return;
         }
 
-        const todoDeleted = prisma.todo.update({
+        const foundTodo = await prisma.todo.findFirst({
+            where: {
+                id,
+                isDeleted: false,
+            }
+        });
+
+        if (!foundTodo) {
+            res.status(404).json({ error: `Todo with ID ${id} not found` });
+            return;
+        }
+
+        const todoDeleted = await prisma.todo.update({
             where: {
                 id : id,
             },
