@@ -6,7 +6,7 @@
     "prisma:migrate:prod": "npx prisma migrate deploy",
     "dev": "tsnd --respawn --clear src/app.ts",
     "build": "rimraf ./dist && tsc && prisma:migrate:prod",
-    "start": "npm run build && node dist/app.js",
+    "start": "npm run build && node dist/app.js"
     
   },
   "keywords": [],
