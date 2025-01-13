@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "prisma:migrate:prod": "npx prisma migrate deploy",
     "dev": "tsnd --respawn --clear src/app.ts",
-    "build": "rimraf ./dist && tsc && prisma:migrate:prod",
-    "start": "npm run build && node dist/app.js"
+    "build": "rimraf ./dist && tsc && npm run prisma:migrate:prod",
+    "start": "npm run build && node dist/app.js",
+    "prisma:migrate:prod" : "prisma migrate deploy"
     
   },
   "keywords": [],
